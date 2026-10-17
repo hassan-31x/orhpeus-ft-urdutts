@@ -4,10 +4,10 @@ This is a self-contained Kaggle workflow based on `orpheus-ft-aslp/`. The first 
 
 ## Start on Kaggle
 
-1. Push this entire folder to your GitHub repository. It can stay at `orpheus-ft-urdutts/` beside ASLP, or be the repository root.
+1. Push this folder's contents to [hassan-31x/orhpeus-ft-urdutts](https://github.com/hassan-31x/orhpeus-ft-urdutts). The notebook is configured for scripts at that repository's root (`PROJECT_FOLDER="."`).
 2. Import **`kaggle_run.ipynb` from this folder** into Kaggle. Enable Internet and an NVIDIA GPU. No Drive files or Kaggle dataset uploads are required.
 3. Add the **`HF_TOKEN`** Kaggle Secret and grant notebook access. Use a token with write access to the private model repository below. The script can create that repository if the token permits it; existing public repositories are rejected.
-4. In the first code cell, check `REPO_URL`, `REPO_REF`, `HF_REPO_ID`, and `SESSION_HOURS`. The existing GitHub URL is filled in. The new default checkpoint repo is `hassan-31x/orpheus-urdutts-checkpoints`; change it if needed. Set the session budget below the runtime limit shown by your account.
+4. In the first code cell, check `REPO_REF`, `HF_SECRET_NAME`, and `SESSION_HOURS`. GitHub is set to `hassan-31x/orhpeus-ft-urdutts`; checkpoints use [hassan-31x/orpheus-urdutts-checkpoints](https://huggingface.co/hassan-31x/orpheus-urdutts-checkpoints). Set the session budget below the runtime limit shown by your account.
 5. Leave **`TEST=True`**, `TEST_TRAIN_CLIPS=20`, and `TEST_VALIDATION_CLIPS=10`. Choose Save Version → Save & Run All. You can change the test counts to 10 or another positive number.
 6. Wait for **TEST PASSED**. It requires a completed smoke run, finite full-validation loss, a sealed checkpoint, final adapter, and successful remote snapshot. Generated speech is reported separately; listen to it and the reference clips. Passing this check does not establish Urdu speech quality.
 7. Set **`TEST=False`**, keep **`INIT_FROM_RUN=None`**, and rerun for the full initial epoch. The smoke run has a separate ID and dataset/token cache, so its weights cannot seed the full run accidentally.
@@ -15,6 +15,16 @@ This is a self-contained Kaggle workflow based on `orpheus-ft-aslp/`. The first 
 `REPO_REF="main"` allows the first launch after you push. The notebook prints the resolved Git commit. **Pin REPO_REF to that commit for all resumes of that run.** Updating your GitHub checkout does not update an already-imported Kaggle notebook; import the new notebook when its cells change.
 
 An audit without model training is available with `AUDIT_ONLY=True`. With `TEST=True`, it inspects just the smoke subset. With `TEST=False`, it converts and audits the full train/validation partitions. Reference playback is in the status cell.
+
+### If the first cell cannot load HF_TOKEN
+
+This happens before dependency installation, data preparation or training. The debugger/frozen-module warnings and notebook HTML conversion warnings are unrelated to the failure.
+
+Open the **new UrduTTS notebook in Edit mode → Add-ons → Secrets**. Select or create the secret labelled **`HF_TOKEN`**, and **enable its access for this notebook**. Access granted to the previous ASLP notebook does not configure the new notebook. If your existing secret uses another label, set `HF_SECRET_NAME` to that exact label in the first code cell. Its value must be a Hugging Face token with write access to the checkpoint repository. Do not put the value in code or notebook output.
+
+Then **Save Version → Save & Run All** again. Updating GitHub alone does not replace the first cell of the imported notebook: re-import the updated `kaggle_run.ipynb` or replace that cell as well. No training progress was created by a failure at secret loading.
+
+The updated loader uses an existing `HF_TOKEN` environment variable first, then the legacy `HUGGING_FACE_HUB_TOKEN` environment name, and otherwise Kaggle Secrets with `HF_SECRET_NAME`. Only the credential source is printed. Missing/disabled/empty secrets still stop with actionable instructions; code cannot grant Kaggle secret access on your behalf. The private-repository upload/readback preflight still verifies the actual token permissions.
 
 ## Dataset format and conversion
 
