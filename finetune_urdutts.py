@@ -1019,7 +1019,7 @@ def main():
             identity = dict(config=semantic, token_cache_sha256=cache_id,
                             packages=env["packages"], torch=env["torch"],
                             source_sha256={name: sha256(Path(__file__).parent / name) for name in
-                                           ("finetune_urdutts.py", "urdutts_data.py", "orpheus_utils.py", "synthesize.py", "pipeline_recovery.py")})
+                                           ("finetune_urdutts.py", "urdutts_data.py", "audio_storage.py", "orpheus_utils.py", "synthesize.py", "pipeline_recovery.py")})
             identity_path = run / "run_identity.json"
             reconcile_run_identity(run, identity)
             atomic_json(run / "environment.json", env)
@@ -1062,6 +1062,10 @@ def main():
                                      if p.is_file() and p.name != ".lock"])
                 LOG.info("Preparation complete; reuse same config/run_id for training")
                 return
+            from audio_storage import release_encoded_audio
+            set_activity("verifying token cache and reclaiming converted audio")
+            release_encoded_audio(root, cache, run, cfg)
+            upload_files(store, [(run / "audio_storage.json", "preparation/audio_storage.json")])
             train(cfg, ds, tokenizer, splits, run, store, identity, session_start)
 
 

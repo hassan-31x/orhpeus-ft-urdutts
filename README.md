@@ -83,7 +83,20 @@ The new run loads the completed epoch's final LoRA weights and compatible token 
 
 Failed remote uploads are queued locally and retried. **Check `backup_status.json` and `remote_snapshot_current` before discarding the runtime.** A locally complete run with pending uploads is not yet remotely durable. Rerunning an already-completed run retries its backup without repeating training.
 
-Disk checks preserve the newest verified checkpoint and prune older verified ones under pressure. Full retained train+validation PCM16 audio is about 13.3 GiB using the publisher's hours, plus WAV headers, base weights, encoded caches, optimizer snapshots and upload evidence. Source Arrow shards are streamed rather than cached. Actual free-space requirements depend on adapter serialization and retained checkpoints; inspect notebook disk diagnostics. Two T4 GPUs do not combine VRAM; the script uses device 0.
+Disk checks preserve the newest verified checkpoint and prune older verified ones under pressure. Full retained train+validation PCM16 audio is about 13.3 GiB using the publisher's hours during preparation, plus WAV headers, base weights and encoded caches. **After complete SNAC encoding, the workflow verifies all token chunks and their retained-row coverage, then reclaims registered, unchanged converted WAVs before loading the training model.** It keeps the first three references per split and all seeded monitoring references. `audio_storage.json` records reclaimed bytes and protected clips. Parquet/Arrow tokens, conversion registries, reports, base weights and full optimizer checkpoints remain. Preparation-only and audit modes retain their audio. A later startup regenerates missing WAVs from the pinned public source for auditing; compatible SNAC tokens are reused.
+
+Actual free-space requirements depend on adapter serialization and retained checkpoints; inspect notebook disk diagnostics. Two T4 GPUs do not combine VRAM; the script uses device 0.
+
+### Recovering the reported 4.83 GiB / 5.07 GiB disk failure
+
+The supplied log shows encoding finished but training stopped at its initial checkpoint-space check, **before any optimizer step**. The 2 context-overflow exclusions are separate from this disk error. The checkpoint estimate includes frozen embedding weights that PEFT may save, so the 512 MiB reserve and full-state checkpoint format have not been reduced.
+
+1. Push the updated code, including **`audio_storage.py`**, and update/re-import the notebook.
+2. Keep **`TEST=False`**, the same full-run ID, the same training settings, and `INIT_FROM_RUN=None`. Select the newly pushed commit with `REPO_REF` (or `main` to fetch it initially). Pin that new commit for subsequent resumes.
+3. Rerun the notebook. Keep the existing runtime/files if available: converted audio and verified local token chunks are reused. In a fresh runtime audio is downloaded/converted again; successfully uploaded compatible token chunks are restored from Hugging Face. No manual deletion is needed.
+4. Look for **`Reclaimed ... GiB from ... converted WAVs`** before model training, then check `disk_budget.json` and the first checkpoint's remote backup status.
+
+For this run, reclaimable converted audio is roughly 13 GiB, comfortably more than the reported 240 MiB shortfall. Exact reclaimed bytes/free space are measured, not assumed. The same disk reserve is enforced again before every save. This update changes training source identity; it is suitable for this preparation-only failure. A run that already has a verified optimizer checkpoint must use its recorded code revision to resume.
 
 ## Files and validation
 
@@ -92,6 +105,7 @@ Disk checks preserve the newest verified checkpoint and prune older verified one
 | `kaggle_run.ipynb` | Clone, install, test, configure, train, monitor and listen |
 | `configs/urdutts.json` | One-epoch base-model defaults and pinned source dataset |
 | `urdutts_data.py` | Saved-Arrow reader and resumable 24 kHz conversion |
+| `audio_storage.py` | Verified post-encoding WAV reclamation, preserving references and token caches |
 | `finetune_urdutts.py` | Inherited data audit, encoding, training and resume control |
 | `orpheus_utils.py` | Orpheus tokens, checkpoint sealing, private Hub storage |
 | `pipeline_recovery.py` | Upload queue, memory/disk recovery and heartbeat |

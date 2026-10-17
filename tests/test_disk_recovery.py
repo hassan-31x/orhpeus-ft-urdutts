@@ -54,6 +54,16 @@ class DiskTests(unittest.TestCase):
                 report = ensure_checkpoint_space(d, 4903436288, remote=True)
             self.assertEqual(report['required_bytes'], 2 * 4903436288 + 512 * 1024**2)
 
+    def test_logged_urdutts_failure_requires_reclaiming_space_not_lowering_reserve(self):
+        with tempfile.TemporaryDirectory() as d:
+            with patch('shutil.disk_usage', return_value=SimpleNamespace(free=5188284416)):
+                with self.assertRaises(OSError):
+                    ensure_checkpoint_space(d, 4903436288, remote=True, archive_snapshots=False)
+            with patch('shutil.disk_usage', return_value=SimpleNamespace(free=5188284416 + 13 * 1024**3)):
+                report = ensure_checkpoint_space(d, 4903436288, remote=True, archive_snapshots=False)
+            self.assertEqual(report['required_bytes'], 5440307200)
+            self.assertTrue(report['enough'])
+
     def test_later_save_reclaims_old_checkpoint_without_deleting_latest(self):
         with tempfile.TemporaryDirectory() as d:
             run = Path(d)
