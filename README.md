@@ -26,6 +26,14 @@ Then **Save Version → Save & Run All** again. Updating GitHub alone does not r
 
 The updated loader uses an existing `HF_TOKEN` environment variable first, then the legacy `HUGGING_FACE_HUB_TOKEN` environment name, and otherwise Kaggle Secrets with `HF_SECRET_NAME`. Only the credential source is printed. Missing/disabled/empty secrets still stop with actionable instructions; code cannot grant Kaggle secret access on your behalf. The private-repository upload/readback preflight still verifies the actual token permissions.
 
+## Listen to saved checkpoints
+
+Import **`checkpoint_demo.ipynb`** into Kaggle with Internet and an NVIDIA GPU, and enable the `HF_TOKEN` secret for that notebook. Read access to the private model repository is sufficient. This demo uses the existing inference environment and synthesis code without preparing data or starting training.
+
+Run cells 1–3 to list adapters in the epoch-1 run, then set `SELECT` in cell 4 to one or several printed indices. Set `TEXT` to your Urdu sentence and run cell 5 for labelled audio players. The default selects the latest numbered checkpoint; set `RUN_ID=None` to list other epochs too. Rerun cells 4–5 to compare different selections, or only cell 5 after changing the sentence. Every selection uses the same seed and generation settings, and models load sequentially in separate processes.
+
+The notebook pins the Hub commit and downloads only inference files from unpacked snapshot folders. WAV files, decoding metadata, and `comparison.json` are saved in `/kaggle/working/urdu-checkpoint-demo/audio/`. Legacy archive snapshots need separate restoration. GPU synthesis and listening quality must be checked in the Kaggle runtime.
+
 ## Dataset format and conversion
 
 Source: [kaab4321/UrduTTS](https://huggingface.co/datasets/kaab4321/UrduTTS), pinned to commit **`a012374328f140d2647e9138e6ceae85d4ee9f2c`**. The actual repository is a saved Hugging Face `DatasetDict`: `dataset_dict.json`, split `state.json` files, and Arrow IPC shards. Its card's `load_dataset("XKaab/UrduTTS")` example references a different ID and does not describe this repository's storage layout. The loader reads the requested repository directly.
@@ -103,6 +111,7 @@ For this run, reclaimable converted audio is roughly 13 GiB, comfortably more th
 | File | Purpose |
 |---|---|
 | `kaggle_run.ipynb` | Clone, install, test, configure, train, monitor and listen |
+| `checkpoint_demo.ipynb` | Load saved Hub checkpoints and compare Urdu speech for the same text |
 | `configs/urdutts.json` | One-epoch base-model defaults and pinned source dataset |
 | `urdutts_data.py` | Saved-Arrow reader and resumable 24 kHz conversion |
 | `audio_storage.py` | Verified post-encoding WAV reclamation, preserving references and token caches |
